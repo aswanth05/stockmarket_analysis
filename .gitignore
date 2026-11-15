@@ -1,0 +1,20 @@
+# Secrets: never commit real keys
+.env
+.env.*
+!.env.example
+
+# Dependencies and builds
+node_modules/
+dist/
+build/
+coverage/
+
+# Local databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Logs and OS files
+*.log
+.DS_Store
