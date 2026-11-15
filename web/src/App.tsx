@@ -3,12 +3,29 @@ import type { HealthResponse } from '@ust/shared';
 import { apiGet } from './api/client';
 import { Gallery } from './gallery/Gallery';
 
-type ServerState = { kind: 'checking' } | { kind: 'ok'; time: string } | { kind: 'down' };
+type ServerState =
+  | { kind: 'checking' }
+  | { kind: 'ok'; time: string }
+  | { kind: 'down' }
+  | { kind: 'static' };
+
+/** True for the GitHub Pages build, which has no API server behind it. */
+const STATIC_PREVIEW = import.meta.env.VITE_STATIC_PREVIEW === 'true';
+
+const SERVER_LABELS: Record<ServerState['kind'], string> = {
+  checking: 'Checking API server…',
+  ok: 'API server connected',
+  down: 'API server not reachable',
+  static: 'Static preview · no API server',
+};
 
 export function App() {
-  const [server, setServer] = useState<ServerState>({ kind: 'checking' });
+  const [server, setServer] = useState<ServerState>(
+    STATIC_PREVIEW ? { kind: 'static' } : { kind: 'checking' },
+  );
 
   useEffect(() => {
+    if (STATIC_PREVIEW) return;
     const ctrl = new AbortController();
     apiGet<HealthResponse>('/health', ctrl.signal)
       .then((h) => setServer({ kind: 'ok', time: h.serverTime }))
@@ -31,7 +48,7 @@ export function App() {
           style={{ color: server.kind === 'ok' ? 'var(--color-gain)' : server.kind === 'down' ? 'var(--color-loss)' : 'var(--color-text-muted)' }}
         >
           <span className="pill-dot" aria-hidden="true" />
-          {server.kind === 'ok' ? 'API server connected' : server.kind === 'down' ? 'API server not reachable' : 'Checking API server…'}
+          {SERVER_LABELS[server.kind]}
         </span>
       </header>
       <main>
