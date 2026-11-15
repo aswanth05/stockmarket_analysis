@@ -1,0 +1,44 @@
+/*
+ * Design tokens — PROVISIONAL until the Part E design system is approved.
+ * Values follow UI_DESIGN.md §1. tokens.test.ts checks text/background pairs meet WCAG AA (4.5:1).
+ */
+:root {
+  /* Surfaces */
+  --color-bg: #0b1020;
+  --color-card: #131a2e;
+  --color-card-raised: #1a2340;
+  --color-border: #2a3556;
+
+  /* Text */
+  --color-text: #e6eaf2;
+  --color-text-muted: #9aa4bf;
+
+  /* Meaning */
+  --color-accent: #2dd4bf;
+  --color-accent-text: #0b1020;
+  --color-secondary: #8b9cf7;
+  --color-gain: #34d399;
+  --color-loss: #f87171;
+  --color-warn: #fbbf24;
+  --color-focus: #7dd3fc;
+
+  /* Type */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius: 12px;
+  --radius-sm: 6px;
+}
