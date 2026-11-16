@@ -29,6 +29,14 @@ describe('netMargin', () => {
   it('allows a loss', () => {
     expect(netMargin(-20, 100).value).toBeCloseTo(-0.2);
   });
+  it('refuses a margin above 100%: the revenue figure is incomplete', () => {
+    const r = netMargin(150, 100);
+    expect(r.value).toBeNull();
+    expect(r.reason).toMatch(/incomplete/);
+  });
+  it('keeps losses larger than revenue (they are real)', () => {
+    expect(netMargin(-145, 100).value).toBeCloseTo(-1.45);
+  });
   it('refuses zero or negative revenue', () => {
     expect(netMargin(5, 0).value).toBeNull();
     expect(netMargin(5, -1).reason).toMatch(/zero or negative/);

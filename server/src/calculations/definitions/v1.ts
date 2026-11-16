@@ -2,7 +2,8 @@
  * Calculation definitions, version 1. Changing a formula means adding v2, not editing this file,
  * so every displayed figure can say which definition produced it.
  */
-export const VERSION = 'v1';
+// v1.1 (2026-11-16): net margin is not calculated when net income exceeds revenue (partial revenue lines).
+export const VERSION = 'v1.1';
 
 export const METRICS = {
   revenueGrowth: {
@@ -17,7 +18,7 @@ export const METRICS = {
     name: 'Net profit margin',
     formula: 'Net income ÷ Revenue',
     inputs: ['Net income, latest fiscal year', 'Revenue, latest fiscal year'],
-    notes: 'Not calculated when revenue is zero or negative. Net income can be negative (a loss).',
+    notes: 'Not calculated when revenue is zero or negative, or when net income exceeds revenue (a sign the filed revenue line is partial, common for banks). Net income can be negative (a loss).',
   },
   roe: {
     id: 'roe',

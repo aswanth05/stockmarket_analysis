@@ -11,6 +11,9 @@ export const CONCEPT_TAGS = {
     'SalesRevenueNet',
     'RevenueFromContractWithCustomerIncludingAssessedTax',
     'RevenuesNetOfInterestExpense',
+    // Property companies (REITs) often report total rent only as lease income.
+    'OperatingLeaseLeaseIncome',
+    'RealEstateRevenueNet',
   ],
   netIncome: ['NetIncomeLoss', 'ProfitLoss'],
   operatingCashFlow: ['NetCashProvidedByUsedInOperatingActivities', 'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations'],

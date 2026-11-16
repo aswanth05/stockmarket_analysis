@@ -21,6 +21,8 @@ export function netMargin(netIncome: number | null, revenue: number | null): Res
   if (netIncome == null) return missing('net income');
   if (revenue == null) return missing('revenue');
   if (revenue <= 0) return { value: null, reason: 'revenue is zero or negative' };
+  // Profit above revenue almost always means the filed revenue line is partial (banks, some REITs).
+  if (netIncome > revenue) return { value: null, reason: 'net income exceeds the reported revenue, so the revenue figure is probably incomplete' };
   return ok(netIncome / revenue);
 }
 
