@@ -1,4 +1,5 @@
 @import './tokens.css';
+@import './layout.css';
 
 *,
 *::before,
@@ -151,6 +152,11 @@ table.data-table {
 .data-table td.num,
 .data-table th.num {
   text-align: right;
+  white-space: nowrap;
+}
+
+.data-table th button {
+  white-space: nowrap;
 }
 
 .skeleton {

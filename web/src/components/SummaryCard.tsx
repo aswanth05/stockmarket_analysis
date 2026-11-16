@@ -21,9 +21,9 @@ export function SummaryCard({ title, value, changePct, sparkline, asOf, source, 
         <h3 className="card-title">{title}</h3>
         {badge}
       </div>
-      <div style={{ display: 'flex', alignItems: 'end', justifyContent: 'space-between', gap: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', justifyContent: 'space-between', gap: 8 }}>
         <div>
-          <div className="num" style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>
+          <div className="num" style={{ fontSize: 'var(--text-xl)', fontWeight: 600, whiteSpace: 'nowrap' }}>
             {value ?? MISSING}
           </div>
           {value == null ? (

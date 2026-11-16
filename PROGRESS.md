@@ -46,3 +46,28 @@ Step numbers refer to [PROJECT_STEPS.md](PROJECT_STEPS.md). Build order follows 
 
 **What comes next**
 - Part E design approval, then step 28, Login.
+
+## 2026-11-15: GitHub Pages preview
+
+- Added `.github/workflows/pages.yml`: on every push to `main` it runs the tests, builds the web app and publishes it to https://aswanth05.github.io/stockmarket_analysis/ (frontend only, labelled "Static preview").
+- Needs a one-time setting: repo Settings → Pages → Source: GitHub Actions. The first deploy failed because Pages was not yet enabled.
+
+## 2026-11-15: Step 30, Home screen with placeholder data (run before steps 28–29 at the user's request)
+
+**What changed**
+- App shell from UI_DESIGN §2: sidebar (collapses to icons on tablet), top bar with market status and live ET clock, "Sample data" badge, notifications and account buttons; phone layout uses one column and a bottom nav for the five main screens. Unbuilt screens show which step builds them. The component examples moved to their own sidebar link.
+- Home screen from UI_DESIGN §3: four summary cards (SPY proxy, breadth, watchlist filings, watchlist count), index ETF proxy chart (SPY/DIA/QQQ selector, range tabs, 1H/1D disabled with the reason), sector donut, breadth gauge (share above 50-day average, our own measure), sortable top-markets table, daily candle chart with volume and 50/200-day averages, AI review box, weekly sector comparison, recent EDGAR filings, and a footer strip with only supportable claims.
+- Charts are hand-built SVG with hover tooltips and arrow-key stepping. The categorical palette passed the dataviz validator against the card surface (CVD ΔE ≥ 8.4, contrast ≥ 3:1).
+- `shared/src/market/session.ts`: market status from Eastern Time. **Provisional**: no holiday calendar yet (step 29), and pre/after-hours windows (4:00–9:30, 16:00–20:00) must be confirmed with the data provider.
+- All numbers come from `web/src/screens/home/sampleData.ts`, fixed-seed sample data. A banner and every card say "Sample data".
+
+**What was tested**
+- 49 tests pass, adding: session status (weekend closed, each window, daylight time), Home has no buy/sell or crypto wording, every card shows a data time and source, ETF proxy label visible, disabled ranges explain why, missing price shows a dash not $0.00, moving average returns null until enough data.
+- Typecheck and lint pass. Screenshots checked at 1440px (desktop) and 500px (phone layout).
+
+**Open items**
+- Steps 28 (Login) and 29 (holiday calendar) are still to do; the terminal is not behind a login yet.
+- The moving-average calculation is in the frontend sample file for now; step 36 moves it to the server per CLAUDE.md.
+
+**What comes next**
+- Step 31, Data connection (needs Alpaca and EODHD keys in `server/.env`), or step 28, Login.
