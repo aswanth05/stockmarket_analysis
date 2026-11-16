@@ -15,9 +15,9 @@ describe('GET /api/health', () => {
     expect(res.headers['x-powered-by']).toBeUndefined();
   });
 
-  it('returns JSON 404 for unknown API routes', async () => {
+  it('asks for login before revealing whether an API route exists', async () => {
     const res = await request(createApp()).get('/api/nope');
-    expect(res.status).toBe(404);
-    expect(res.body).toEqual({ error: 'Not found' });
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: 'Please log in.' });
   });
 });

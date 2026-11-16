@@ -15,7 +15,9 @@
     "test": "npm run test --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build": "npm run build -w web",
+    "start": "NODE_ENV=production npm run start -w server"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

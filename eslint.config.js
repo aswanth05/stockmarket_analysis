@@ -8,6 +8,12 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    rules: {
+      // A leading underscore marks a parameter or binding that is intentionally unused.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
+    },
+  },
+  {
     files: ['server/**/*.ts', 'shared/**/*.ts'],
     languageOptions: { globals: globals.node },
   },

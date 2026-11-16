@@ -9,10 +9,12 @@ interface Props {
   options: TickerOption[];
   onSelect: (option: TickerOption) => void;
   label?: string;
+  /** Called as the user types, so a parent can fetch matching options. */
+  onQueryChange?: (q: string) => void;
 }
 
 /** Combobox that matches ticker prefixes and company-name words. Keyboard: ↑ ↓ Enter Esc. */
-export function TickerSearch({ options, onSelect, label = 'Search tickers or companies' }: Props) {
+export function TickerSearch({ options, onSelect, onQueryChange, label = 'Search tickers or companies' }: Props) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
@@ -50,6 +52,7 @@ export function TickerSearch({ options, onSelect, label = 'Search tickers or com
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
+          onQueryChange?.(e.target.value);
           setActive(0);
           setOpen(true);
         }}

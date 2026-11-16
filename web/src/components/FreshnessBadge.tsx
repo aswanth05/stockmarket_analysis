@@ -1,5 +1,6 @@
 import type { Freshness } from '@ust/shared';
 import { formatEt } from '../format';
+import { useMarket } from '../layout/MarketContext';
 
 interface Props {
   freshness: Freshness;
@@ -15,6 +16,16 @@ const COLORS: Record<Freshness, string> = {
 };
 
 export function FreshnessBadge({ freshness, asOf, delayMinutes }: Props) {
+  const market = useMarket();
+  // With the market closed, a price is the last trade, never live (UI_DESIGN §6).
+  if (market?.status === 'closed' && freshness !== 'stale') {
+    return (
+      <span className="pill muted" title={`Last trade ${formatEt(asOf)}`}>
+        <span className="pill-dot" aria-hidden="true" />
+        Closed · last trade
+      </span>
+    );
+  }
   const label =
     freshness === 'real-time'
       ? 'Real-time'

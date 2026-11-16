@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { findBannedWording } from '@ust/shared';
-import { HomeScreen } from './HomeScreen';
+import { SampleHomeScreen as HomeScreen } from './SampleHomeScreen';
 import { sma } from './sampleData';
 
 describe('HomeScreen (step 30, placeholder data)', () => {

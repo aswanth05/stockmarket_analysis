@@ -6,16 +6,19 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "update:sp500": "tsx scripts/update-sp500.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@ust/shared": "*",
-    "express": "^5.3.0"
+    "bcryptjs": "^3.0.3",
+    "express": "^5.3.0",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/supertest": "^7.2.1",
-    "supertest": "^7.3.2",
-    "tsx": "^4.23.15"
+    "supertest": "^7.3.2"
   }
 }

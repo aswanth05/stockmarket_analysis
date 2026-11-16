@@ -124,7 +124,7 @@ export function Gallery() {
           summary="Sample line rising over the selected range."
         >
           <div style={{ padding: 'var(--space-4) 0' }}>
-            <Sparkline values={[2, 3, 2.5, 4, 3.6, 5, 5.4, 6]} label="Sample chart line" width={480} height={120} />
+            <Sparkline values={[2, 3, 2.5, 4, 3.6, 5, 5.4, 6]} label="Sample chart line" width={300} height={120} />
           </div>
           <div className="muted" style={{ fontSize: 'var(--text-xs)' }}>
             Selected range: {range}. Candle charts arrive in step 36.

@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     port: 5173,
     // The browser only ever talks to our own server; provider keys stay there.
-    proxy: { '/api': 'http://localhost:3001' },
+    proxy: { '/api': process.env.API_URL ?? 'http://localhost:3001' },
   },
   test: {
     environment: 'jsdom',

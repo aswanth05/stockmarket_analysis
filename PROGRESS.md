@@ -71,3 +71,39 @@ Step numbers refer to [PROJECT_STEPS.md](PROJECT_STEPS.md). Build order follows 
 
 **What comes next**
 - Step 31, Data connection (needs Alpaca and EODHD keys in `server/.env`), or step 28, Login.
+
+## 2026-11-15: Steps 28–44, full version 1 scope (built in one pass at the user's request)
+
+**What changed**
+- **28 Login:** sign-up, login, logout, password change. bcrypt (12 rounds), random session tokens stored hashed, httpOnly SameSite=Lax cookie, login rate limit (5 failures per email+IP, 20 attempts per IP, 15 min), same error for unknown email and wrong password. Sign-up closes after the first account unless `ALLOW_SIGNUP=true`. State-changing requests must carry the app's `X-Requested-With` header and a matching Origin. Every terminal endpoint requires login.
+- **29 Market calendar:** `server/data/nyse-calendar.json` from nyse.com (holidays and early closes 2026–2028). Server computes open / pre-market / after-hours / closed in ET, names holidays, handles early closes.
+- **31 Data connection:** one service per provider in `server/src/providers/` (Alpaca, EODHD, SEC EDGAR, Anthropic via its SDK). Keys read only in `config.ts`. Every provider call logged (path, status, timing, error; never keys).
+- **32 Quote storage:** each quote stored with its own time, source and feed type. A failed refresh keeps the last value and marks it stale with the error; quotes older than 15 min past their delay during the session are stale too. Change % computed on the server.
+- **33 Home on real data:** SPY proxy, breadth from the saved S&P 500 list, share above 50-day average (only when ≥90% of the list has history), sector counts, weekly sector returns, top markets, watchlist filings, latest AI review. Every card shows data time and source; empty states explain what to connect.
+- **34 Watchlist:** stored per account on the server; add via search, remove, filter box; prices poll every 30 s.
+- **35 Stock Research:** company header (exchange from EDGAR), Long Term tab (key figures with formula tooltips showing inputs, period, filing ID; revenue/net income chart; annual table where every number has its source; experimental factor scores with weights; rule-based risk flags; AI review panel; recent filings; sources), Swing Trading tab.
+- **36 Daily chart:** candles, volume, 50/200-day averages calculated on the server; swing statistics with formulas.
+- **37 Index proxies:** SPY, DIA, QQQ labelled "ETF proxy".
+- **38 Sectors:** two separate areas: recent price movement (1D/1W/1M) and business outlook (median revenue growth and net margin from EDGAR frames).
+- **39 Screener:** filter panel left, results right, removable active-filter chips; missing data never passes a filter.
+- **40 EDGAR fundamentals:** annual 10-K values per fiscal-year end with accession number, filing date and XBRL tag; revenue growth, net margin, ROE (average equity), free cash flow in `server/src/calculations/` with versioned definitions (`definitions/v1.ts`).
+- **41 Live updates:** polling (quotes job every minute in session; pages poll 30–60 s; freshness badges update; when the market is closed badges read "Closed · last trade").
+- **42 AI review:** Claude Opus 5.5 with structured output and server-side refusal fallback; writes only from stored evidence; output with recommendation wording is withheld; monthly cap required and checked before each call; each review stores date, model, evidence date, sources and cost.
+- **43 Accessibility and phone:** skip link, focus moves to content on navigation, labelled tables, chart text summaries, keyboard tooltips and combobox, reduced-motion rule, account menu for Settings/Sources on phones. All screens checked at 390 px with no sideways scrolling.
+- **44 Deployment:** production server serves the built frontend with security headers; `render.yaml` (persistent disk for SQLite; keys as Render secrets).
+
+**What was tested**
+- 94 automated tests pass (shared 11, server 42, web 41), plus typecheck and lint. Server tests cover login gating, cookie flags, bcrypt storage, rate limit, cross-site rejection, watchlist persistence across logout and per-account privacy, stale marking, EDGAR extraction (quarters and 10-Q values excluded), the four calculations including zero and negative cases, a screener manual check, AI budget refusal, and that no key value appears in API responses.
+- End to end on a separate test server and database: sign-up, watchlist, every API route, then screenshots of each screen at 1440 px and 390 px (with synthetic prices in the throwaway database only).
+- Production mode: built app served, deep links work, logged-out API refused, headers present, test key values absent from the browser bundle.
+
+**Not yet verified (needs your keys)**
+- Real Alpaca and EODHD calls (step 31 "AAPL quote appears"), and one day's prices against a public source (step 36).
+- One company's figures against its actual 10-K (step 40). The extraction is tested on a trimmed EDGAR-shaped file, not on a live download.
+- A real Claude review (step 42).
+- Hosting on Render (step 44) needs your account.
+
+**Open items**
+- `SEC_EDGAR_USER_AGENT` in `server/.env` must be filled in by you (a privacy safeguard stopped me writing your email there).
+- Part E design approval was skipped; colors and layout are still provisional.
+- Trademark check for "TradeVision" (step 26) not done; the app uses the name "US Stock Terminal".

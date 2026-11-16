@@ -1,0 +1,36 @@
+# Private deployment on Render (PROJECT_STEPS step 44). One web service runs the API and serves the built frontend.
+# Secrets are marked sync: false, so Render asks for their values in its dashboard; they never live in this repo.
+services:
+  - type: web
+    name: us-stock-terminal
+    runtime: node
+    # SQLite needs a persistent disk, which Render offers on paid plans only.
+    # On the free plan the database (accounts, watchlists) is wiped on every deploy.
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: false
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_PATH
+        value: /var/data/terminal.db
+      - key: ALLOW_SIGNUP
+        value: "false"
+      - key: ALPACA_API_KEY_ID
+        sync: false
+      - key: ALPACA_API_SECRET_KEY
+        sync: false
+      - key: EODHD_API_TOKEN
+        sync: false
+      - key: SEC_EDGAR_USER_AGENT
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MONTHLY_BUDGET_USD
+        sync: false

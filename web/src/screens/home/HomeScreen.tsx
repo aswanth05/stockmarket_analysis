@@ -1,242 +1,238 @@
 import { useState } from 'react';
+import type { HomeResponse, MarketRow } from '@ust/shared';
+import { useApi } from '../../api/useApi';
 import { AIReviewBox } from '../../components/AIReviewBox';
 import { ChangeValue } from '../../components/ChangeValue';
 import { ChartPanel, type Range } from '../../components/ChartPanel';
 import { DataTable, type Column } from '../../components/DataTable';
+import { FreshnessBadge } from '../../components/FreshnessBadge';
+import { ProviderNotice } from '../../components/ProviderNotice';
 import { SourceChip } from '../../components/SourceChip';
 import { Sparkline } from '../../components/Sparkline';
 import { SummaryCard } from '../../components/SummaryCard';
 import { BreadthGauge } from '../../components/charts/BreadthGauge';
-import { CandleChart } from '../../components/charts/CandleChart';
 import { DonutChart } from '../../components/charts/DonutChart';
 import { GroupedBars } from '../../components/charts/GroupedBars';
 import { LineChart } from '../../components/charts/LineChart';
-import { formatChangePct, formatEt, formatPrice } from '../../format';
-import {
-  ABOVE_50DMA_PCT,
-  AI_REVIEW,
-  BREADTH,
-  BREADTH_TREND,
-  INDEX_PROXIES,
-  PRICE_CHART,
-  RECENT_FILINGS,
-  SAMPLE_AS_OF,
-  SAMPLE_SOURCE,
-  SECTOR_WEIGHTS,
-  TOP_MARKETS,
-  WATCHLIST,
-  WEEKLY_SECTOR_RETURNS,
-  edgarCompanyUrl,
-  type MarketRow,
-} from './sampleData';
+import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states/States';
+import { formatChangePct, formatDate, formatPrice } from '../../format';
+import { useMarket } from '../../layout/MarketContext';
+import { DailyChartCard } from '../research/DailyChartCard';
 
 const RANGE_DAYS: Partial<Record<Range, number>> = { '1W': 5, '1M': 21, '3M': 63, '1Y': 252 };
-const NO_INTRADAY = 'intraday data is not connected yet';
+const NO_INTRADAY = 'the app stores daily prices only';
 const pct = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
-const dataTime = `Sample data · last point ${formatEt(SAMPLE_AS_OF)}`;
 
-const MARKET_COLUMNS: Column<MarketRow>[] = [
-  { key: 'ticker', header: 'Ticker', sortValue: (r) => r.ticker, render: (r) => <span className="num ticker">{r.ticker}</span> },
+export const MARKET_COLUMNS: Column<MarketRow>[] = [
+  { key: 'ticker', header: 'Ticker', sortValue: (r) => r.ticker, render: (r) => <a className="num ticker" href={`#/research/${r.ticker}`}>{r.ticker}</a> },
   { key: 'name', header: 'Name', render: (r) => <span className="cell-name">{r.name}{r.kind === 'ETF' && <span className="tag">ETF</span>}</span> },
-  { key: 'price', header: 'Last', numeric: true, sortValue: (r) => r.price, render: (r) => formatPrice(r.price) },
-  { key: 'chg', header: 'Change', numeric: true, sortValue: (r) => r.changePct, render: (r) => <ChangeValue pct={r.changePct} /> },
+  { key: 'price', header: 'Last', numeric: true, sortValue: (r) => r.quote.price, render: (r) => formatPrice(r.quote.price) },
+  { key: 'chg', header: 'Change', numeric: true, sortValue: (r) => r.quote.changePct, render: (r) => <ChangeValue pct={r.quote.changePct} /> },
+  {
+    key: 'fresh',
+    header: 'Data',
+    render: (r) => (r.quote.freshness && r.quote.asOf ? <FreshnessBadge freshness={r.quote.freshness} asOf={r.quote.asOf} delayMinutes={r.quote.delayMinutes} /> : <span className="muted">—</span>),
+  },
   {
     key: 'trend',
     header: '10-day',
     render: (r) =>
-      r.trend.length > 1 ? (
-        <Sparkline values={r.trend} label={`${r.ticker} 10-day trend, ${formatChangePct(r.changePct).spoken}`} width={80} height={24} />
-      ) : (
-        <span className="muted">—</span>
-      ),
+      r.trend.length > 1 ? <Sparkline values={r.trend} label={`${r.ticker} 10-day closes, ${formatChangePct(r.quote.changePct).spoken} today`} width={80} height={24} /> : <span className="muted">—</span>,
   },
 ];
 
 export function HomeScreen() {
-  const [proxy, setProxy] = useState<(typeof INDEX_PROXIES)[number]['ticker']>('SPY');
+  const { data, error, loading, reload } = useApi<HomeResponse>('/home', 60_000);
+  const market = useMarket();
+  const [proxy, setProxy] = useState('SPY');
   const [range, setRange] = useState<Range>('3M');
-  const series = INDEX_PROXIES.find((p) => p.ticker === proxy)!;
-  const points = series.points.slice(-(RANGE_DAYS[range] ?? 63));
-  const first = points[0]!.value;
-  const last = points[points.length - 1]!.value;
-  const rangeChange = ((last - first) / first) * 100;
 
-  const spy = INDEX_PROXIES[0].points;
-  const spyLast = spy[spy.length - 1]!.value;
-  const spyPrev = spy[spy.length - 2]!.value;
+  if (loading && !data) return <LoadingSkeleton lines={6} label="Loading Home" />;
+  if (!data) return <ErrorState what="Home could not be loaded." next={error ?? 'Try again.'} onRetry={reload} />;
 
-  const candleWindow = 120;
-  const candleStart = PRICE_CHART.candles.length - candleWindow;
+  const series = data.proxies.find((p) => p.ticker === proxy) ?? data.proxies[0]!;
+  const points = series.closes.slice(-(RANGE_DAYS[range] ?? 63));
+  const first = points[0]?.value ?? null;
+  const last = points.at(-1)?.value ?? null;
+  const rangeChange = first && last ? Math.round(((last - first) / first) * 10000) / 100 : null;
+  const spy = data.proxies.find((p) => p.ticker === 'SPY')!;
+  const quoteSource = data.topMarkets.find((r) => r.quote.source)?.quote.source ?? null;
+  const b = data.breadth;
+  const hasBreadth = b.advancing + b.declining + b.unchanged > 0;
+  const firstWatch = data.topMarkets[0]?.ticker ?? 'AAPL';
 
   return (
     <div className="home-grid">
-      <div className="span-12 sample-banner" role="note">
-        <strong>Layout preview.</strong> Every number on this page is sample data, not real market prices. Real data arrives in steps 31–33.
+      <div className="span-12">
+        <ProviderNotice providers={data.providers} need={['alpaca', 'edgar']} />
+        {error && <p className="form-error" role="alert">Latest refresh failed: {error}. Showing the last loaded data.</p>}
       </div>
 
-      {/* Row 1: summary cards */}
       <div className="span-3">
         <SummaryCard
           title="S&P 500 (SPY proxy)"
-          value={formatPrice(spyLast)}
-          changePct={Math.round(((spyLast - spyPrev) / spyPrev) * 10000) / 100}
-          sparkline={spy.slice(-20).map((p) => p.value)}
-          asOf={SAMPLE_AS_OF}
-          source={SAMPLE_SOURCE}
+          value={spy.quote.price == null ? null : formatPrice(spy.quote.price)}
+          changePct={spy.quote.changePct}
+          sparkline={spy.closes.slice(-20).map((c) => c.value)}
+          asOf={spy.quote.asOf ?? ''}
+          source={spy.quote.source ?? 'no quote stored'}
+          badge={spy.quote.freshness && spy.quote.asOf ? <FreshnessBadge freshness={spy.quote.freshness} asOf={spy.quote.asOf} delayMinutes={spy.quote.delayMinutes} /> : undefined}
         />
       </div>
       <div className="span-3">
         <SummaryCard
           title="Market breadth"
-          value={`${BREADTH.advancing}▲ ${BREADTH.declining}▼`}
-          sparkline={BREADTH_TREND}
-          asOf={SAMPLE_AS_OF}
-          source={`${SAMPLE_SOURCE} · ${BREADTH.listSize} stocks in saved S&P 500 list`}
+          value={hasBreadth ? `${b.advancing}▲ ${b.declining}▼` : null}
+          asOf={b.asOf ?? ''}
+          source={`${quoteSource ?? 'no quotes stored'} · ${b.listSize - b.noData} of ${b.listSize} in saved S&P 500 list`}
         />
       </div>
       <div className="span-3">
         <SummaryCard
-          title="Watchlist: new filings or events"
-          value={`${WATCHLIST.withNewFiling} of ${WATCHLIST.count}`}
-          asOf={SAMPLE_AS_OF}
-          source={`${SAMPLE_SOURCE} · last 7 days`}
+          title="Watchlist: new filings (7 days)"
+          value={data.watchlist.count ? `${data.watchlist.withNewFiling} of ${data.watchlist.count}` : null}
+          asOf={data.recentFilings[0] ? `${data.recentFilings[0].filed}T12:00:00Z` : ''}
+          source={data.providers.edgar ? 'SEC EDGAR' : 'SEC EDGAR not connected'}
         />
       </div>
       <div className="span-3">
-        <SummaryCard title="Watchlist companies" value={String(WATCHLIST.count)} asOf={SAMPLE_AS_OF} source={SAMPLE_SOURCE} />
+        <SummaryCard title="Watchlist companies" value={String(data.watchlist.count)} asOf={new Date().toISOString()} source="Your account" />
       </div>
 
-      {/* Row 2: index chart + sector donut */}
       <div className="span-8">
         <ChartPanel
           title="Index ETF proxies"
           range={range}
           onRangeChange={setRange}
           disabledRanges={{ '1H': NO_INTRADAY, '1D': NO_INTRADAY }}
-          dataTimeLabel={`${dataTime} · ETFs shown as proxies for the indexes`}
-          summary={`${series.label} proxy ${proxy}: ${formatChangePct(rangeChange).spoken} over ${range}, ending at ${formatPrice(last)}.`}
+          dataTimeLabel={points.length ? `End-of-day closes · last point ${formatDate(points.at(-1)!.date)} · ETFs shown as proxies for the indexes` : 'No daily prices stored yet'}
+          summary={`${series.label} proxy ${series.ticker}: ${rangeChange == null ? 'no data' : formatChangePct(rangeChange).spoken} over ${range}.`}
         >
           <div className="proxy-row">
             <div className="tabs" role="group" aria-label="Index proxy">
-              {INDEX_PROXIES.map((p) => (
-                <button key={p.ticker} type="button" className="tab" aria-pressed={p.ticker === proxy} onClick={() => setProxy(p.ticker)}>
+              {data.proxies.map((p) => (
+                <button key={p.ticker} type="button" className="tab" aria-pressed={p.ticker === series.ticker} onClick={() => setProxy(p.ticker)}>
                   {p.label} <span className="num">({p.ticker})</span>
                 </button>
               ))}
             </div>
             <span className="tag">ETF proxy</span>
-            <span className="proxy-figure">
-              <span className="num">{formatPrice(last)}</span> <ChangeValue pct={Math.round(rangeChange * 100) / 100} />
-              <span className="muted"> over {range}</span>
-            </span>
+            {last != null && (
+              <span className="proxy-figure">
+                <span className="num">{formatPrice(last)}</span> <ChangeValue pct={rangeChange} />
+                <span className="muted"> over {range}</span>
+              </span>
+            )}
           </div>
-          <LineChart points={points} format={(v) => `$${v.toFixed(0)}`} label={`${series.label} proxy ${proxy} price over ${range}`} />
+          {points.length > 1 ? (
+            <LineChart points={points} format={(v) => `$${v.toFixed(0)}`} label={`${series.label} proxy ${series.ticker} closing prices over ${range}`} />
+          ) : (
+            <EmptyState title="No price history yet">Daily prices appear once market data is connected.</EmptyState>
+          )}
         </ChartPanel>
       </div>
       <div className="span-4">
         <section className="card" aria-label="Sector breakdown">
           <h3 className="card-title">Sector breakdown</h3>
-          <p className="card-sub">Saved S&P 500 list, by weight</p>
-          <DonutChart
-            slices={SECTOR_WEIGHTS.map((s) => ({ label: s.sector, value: s.weight }))}
-            lastIsOther
-            centerLabel="sectors"
-            format={(v) => `${v.toFixed(1)}%`}
-          />
-          <div className="data-time">As of {formatEt(SAMPLE_AS_OF)} · {SAMPLE_SOURCE}</div>
+          <p className="card-sub">Saved S&P 500 list, by number of companies</p>
+          <DonutChart slices={data.sectorCounts.slice(0, 6).map((s) => ({ label: s.sector, value: s.count })).concat(
+            data.sectorCounts.length > 6 ? [{ label: `Other ${data.sectorCounts.length - 6} sectors`, value: data.sectorCounts.slice(6).reduce((a, s) => a + s.count, 0) }] : [],
+          )} lastIsOther={data.sectorCounts.length > 6} centerLabel="sectors" format={(v) => `${v} cos.`} />
+          <div className="data-time">Saved list · Wikipedia, List of S&P 500 companies</div>
         </section>
       </div>
 
-      {/* Row 3: breadth gauge + top markets */}
       <div className="span-4">
         <section className="card" aria-label="Market breadth gauge">
           <h3 className="card-title">Market breadth</h3>
           <p className="card-sub">Our own measure, not a third-party sentiment index</p>
-          <BreadthGauge pct={ABOVE_50DMA_PCT} definition="Share of saved S&P 500 stocks closing above their 50-day average" />
-          <div className="data-time">As of {formatEt(SAMPLE_AS_OF)} · {SAMPLE_SOURCE}</div>
+          <BreadthGauge pct={data.above50.pct} definition="Share of saved S&P 500 stocks closing above their 50-day average" />
+          <div className="data-time">
+            {data.above50.pct == null
+              ? `Not enough data: ${data.above50.counted} of ${data.above50.listSize} stocks have 50 days of prices`
+              : `Closes as of ${formatDate(data.above50.asOf)} · ${data.above50.counted} stocks counted`}
+          </div>
         </section>
       </div>
       <div className="span-8">
         <section className="card" aria-label="Top markets">
           <h3 className="card-title">Top markets</h3>
+          <p className="card-sub">Large US companies and the index ETFs (a fixed list, not a ranking)</p>
           <div className="table-scroll">
-            <DataTable caption="US stocks and ETFs, sample prices" columns={MARKET_COLUMNS} rows={TOP_MARKETS} rowKey={(r) => r.ticker} />
+            <DataTable caption="Top US stocks and ETFs" columns={MARKET_COLUMNS} rows={data.topMarkets} rowKey={(r) => r.ticker} />
           </div>
-          <div className="data-time">As of {formatEt(SAMPLE_AS_OF)} · {SAMPLE_SOURCE} · a dash means no data, never zero</div>
+          <div className="data-time">{quoteSource ? `Prices: ${quoteSource} · a dash means no data, never zero` : 'No prices stored yet'}</div>
         </section>
       </div>
 
-      {/* Row 4: price chart + AI review */}
       <div className="span-8">
-        <section className="card" aria-label="Daily price chart">
-          <div className="card-head">
-            <h3 className="card-title">Daily price chart</h3>
-            <label className="select">
-              <span className="visually-hidden">Stock</span>
-              <select defaultValue={PRICE_CHART.ticker}>
-                <option value="AAPL">AAPL · Apple Inc.</option>
-              </select>
-            </label>
-          </div>
-          <CandleChart
-            candles={PRICE_CHART.candles.slice(candleStart)}
-            ma50={PRICE_CHART.ma50.slice(candleStart)}
-            ma200={PRICE_CHART.ma200.slice(candleStart)}
-            label={`${PRICE_CHART.ticker} daily candles for the last ${candleWindow} trading days, with 50-day and 200-day averages`}
-          />
-          <div className="data-time">End-of-day {dataTime}</div>
-        </section>
+        <DailyChartCard ticker={firstWatch} pickable />
       </div>
       <div className="span-4">
-        <AIReviewBox
-          evidenceDate={AI_REVIEW.evidenceDate}
-          sourceCount={AI_REVIEW.sourceCount}
-          status="draft"
-          score={AI_REVIEW.score}
-          method={AI_REVIEW.method}
-          summary={`${AI_REVIEW.ticker}: ${AI_REVIEW.summary}`}
-        />
+        {data.aiReview ? (
+          <AIReviewBox
+            evidenceDate={data.aiReview.evidenceDate}
+            sourceCount={data.aiReview.sources.length}
+            status="reviewed"
+            summary={`${data.aiReview.ticker}: ${data.aiReview.summary}`}
+            method={`Written by ${data.aiReview.model} on ${formatDate(data.aiReview.createdAt)} from stored evidence`}
+          />
+        ) : (
+          <AIReviewBox evidenceDate={null} sourceCount={0} status="not available" summary="No AI review yet. Open a company in Stock Research to create one." />
+        )}
       </div>
 
-      {/* Row 5: weekly comparison + recent activity */}
       <div className="span-6">
         <section className="card" aria-label="Weekly comparison">
           <h3 className="card-title">Weekly comparison: sector returns</h3>
-          <GroupedBars
-            groups={WEEKLY_SECTOR_RETURNS.map((s) => ({ label: s.sector, values: [s.thisWeek, s.lastWeek] }))}
-            seriesNames={['This week', 'Last week']}
-            axisLabel="Return (%)"
-            format={pct}
-          />
-          <div className="data-time">Weeks ending Nov 13 and Nov 6 · {SAMPLE_SOURCE}</div>
+          {data.weekly.rows.length ? (
+            <GroupedBars
+              groups={data.weekly.rows.map((s) => ({ label: s.sector.replace('Information Technology', 'Info Tech').replace('Communication Services', 'Comm Svcs').replace('Consumer Discretionary', 'Cons. Disc.').replace('Consumer ', 'Cons. '), values: [s.thisWeek, s.lastWeek] }))}
+              seriesNames={['This week', 'Last week']}
+              axisLabel="Average return (%)"
+              format={pct}
+            />
+          ) : (
+            <EmptyState title="Not enough price history">Weekly returns need three weeks of daily closes.</EmptyState>
+          )}
+          <div className="data-time">
+            {data.weekly.weekEnding ? `Weeks ending ${formatDate(data.weekly.weekEnding)} and ${formatDate(data.weekly.previousWeekEnding)} · equal-weighted average of members` : 'No weekly data yet'}
+          </div>
         </section>
       </div>
       <div className="span-6">
         <section className="card" aria-label="Recent activity">
           <h3 className="card-title">Recent activity: watchlist filings</h3>
-          <ul className="activity">
-            {RECENT_FILINGS.map((f) => (
-              <li key={`${f.ticker}-${f.form}-${f.filed}`}>
-                <span className="form-tag num">{f.form}</span>
-                <span className="activity-main">
-                  <span className="num ticker">{f.ticker}</span> <span className="muted">{f.title}</span>
-                </span>
-                <SourceChip source="EDGAR" filed={f.filed} href={edgarCompanyUrl(f.ticker)} />
-              </li>
-            ))}
-          </ul>
-          <div className="data-time">{SAMPLE_SOURCE} · links open the company’s real EDGAR filing list</div>
+          {data.recentFilings.length ? (
+            <ul className="activity">
+              {data.recentFilings.map((f) => (
+                <li key={f.accn}>
+                  <span className="form-tag num">{f.form}</span>
+                  <span className="activity-main">
+                    <a className="num ticker" href={`#/research/${f.ticker}`}>{f.ticker}</a> <span className="muted">{f.description}</span>
+                  </span>
+                  <SourceChip source="EDGAR" filed={f.filed} href={f.url} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="No filings to show">
+              {data.watchlist.count ? (data.providers.edgar ? 'Filings for your watchlist load in the background.' : 'Connect SEC EDGAR to see filings.') : 'Add companies to your watchlist to follow their filings.'}
+            </EmptyState>
+          )}
+          <div className="data-time">SEC EDGAR · each link opens the filing</div>
         </section>
       </div>
 
-      {/* Footer strip: only claims the app can support today */}
       <footer className="span-12 feature-strip">
         <span>US stocks only: NYSE and Nasdaq</span>
-        <span>Delayed market data (planned: EODHD, 15–20 min)</span>
+        <span>{quoteSource?.includes('IEX') ? 'Real-time prices from the IEX exchange only' : 'Delayed or end-of-day market data'}</span>
         <span>Every figure shows its source and time</span>
         <span>Formulas and inputs shown on hover</span>
         <span>AI reviews labelled, with evidence dates</span>
+        {market?.holiday && <span>Today: {market.holiday} (market closed)</span>}
       </footer>
     </div>
   );
 }
+
