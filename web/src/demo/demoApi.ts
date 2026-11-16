@@ -74,7 +74,8 @@ const companyCache = new Map<string, Promise<CompanyFile | null>>();
 
 async function getJson<T>(path: string): Promise<T | null> {
   try {
-    const r = await fetch(`${base()}${path}`);
+    // Revalidate every time: the snapshot is rebuilt daily and must not be served from an old browser copy.
+    const r = await fetch(`${base()}${path}`, { cache: 'no-cache' });
     return r.ok ? ((await r.json()) as T) : null;
   } catch {
     return null;
