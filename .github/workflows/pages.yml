@@ -1,10 +1,15 @@
-# Publishes the frontend as a static preview on GitHub Pages after every push to main.
-# Pages cannot run the API server, so the preview has no backend, login or data.
-name: Deploy preview to GitHub Pages
+# Publishes the public demo to GitHub Pages: the full app UI with no login, showing a daily snapshot of
+# real SEC EDGAR data (financials, filings). No prices (market-data terms). No keys reach the site.
+#
+# Needs one repository secret: SEC_EDGAR_USER_AGENT = "Your Name your@email.com"
+# (Settings → Secrets and variables → Actions). The SEC requires a contact on every request.
+name: Deploy demo to GitHub Pages
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 11 * * *' # daily, 6–7 AM US Eastern
   workflow_dispatch:
 
 permissions:
@@ -19,6 +24,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,6 +33,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Download SEC EDGAR snapshot
+        run: npm run demo:snapshot -w server
+        env:
+          SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
       - run: npm run build -w web
         env:
           VITE_BASE: /${{ github.event.repository.name }}/

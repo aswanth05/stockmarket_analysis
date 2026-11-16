@@ -1,23 +1,13 @@
-import type { AnnualRow, FilingView, MetricView, SourceRef } from '@ust/shared';
-import { freeCashFlow, netMargin, revenueGrowth } from '../calculations/engine';
+import type { AnnualRow, FilingView, MetricView } from '@ust/shared';
+import { netMargin, revenueGrowth } from '../calculations/engine';
 import { buildMetrics, factorScores, riskFlags } from './compute';
+import { priorEquityFromFacts, rowsFromFacts, type FactRow } from './rows';
 import { getDb, nowIso } from '../db';
 import { companyFacts, filingUrl, frame, padCik, submissions } from '../providers/edgar';
 import { CONCEPT_TAGS, extractAnnual, type Concept } from './extract';
 
 const FACTS_TTL_MS = 24 * 3600_000;
 const TRACKED_FORMS = new Set(['10-K', '10-K/A', '10-Q', '10-Q/A', '8-K', '8-K/A', 'DEF 14A', 'S-1', '20-F', '6-K']);
-
-interface FactRow {
-  concept: Concept;
-  period_end: string;
-  period_start: string | null;
-  value: number;
-  tag: string;
-  accn: string;
-  form: string;
-  filed: string;
-}
 
 export function factsStatus(cik: string): { loaded_at: string; status: string; error: string | null } | undefined {
   return getDb().prepare('SELECT loaded_at, status, error FROM facts_loaded WHERE cik = ?').get(padCik(cik)) as
@@ -59,56 +49,18 @@ export async function loadCompany(cik: string, force = false): Promise<void> {
   }
 }
 
-const refOf = (cik: string, f: FactRow | undefined): SourceRef | undefined =>
-  f && { source: `SEC EDGAR, ${f.tag}`, form: f.form, accn: f.accn, filed: f.filed, url: filingUrl(cik, f.accn) };
+const FACT_COLUMNS = "concept, period_end, period_start, value, tag, accn, form, filed";
+const storedFacts = (cik: string) =>
+  getDb().prepare(`SELECT ${FACT_COLUMNS} FROM facts WHERE cik = ? AND origin = 'companyfacts'`).all(padCik(cik)) as unknown as FactRow[];
 
 export function annualRows(cik: string): AnnualRow[] {
-  const id = padCik(cik);
-  const rows = getDb()
-    .prepare("SELECT concept, period_end, period_start, value, tag, accn, form, filed FROM facts WHERE cik = ? AND origin = 'companyfacts'")
-    .all(id) as unknown as FactRow[];
-  const by = (c: Concept) => new Map(rows.filter((r) => r.concept === c).map((r) => [r.period_end, r]));
-  const rev = by('revenue');
-  const ni = by('netIncome');
-  const cfo = by('operatingCashFlow');
-  const capex = by('capex');
-  const eq = by('equity');
-  const ends = [...new Set([...rev.keys(), ...ni.keys()])].sort().reverse().slice(0, 6);
-  return ends.map((end) => {
-    const fcf = freeCashFlow(cfo.get(end)?.value ?? null, capex.get(end)?.value ?? null).value;
-    return {
-      end,
-      revenue: rev.get(end)?.value ?? null,
-      netIncome: ni.get(end)?.value ?? null,
-      operatingCashFlow: cfo.get(end)?.value ?? null,
-      capex: capex.get(end)?.value ?? null,
-      freeCashFlow: fcf,
-      equity: eq.get(end)?.value ?? null,
-      refs: {
-        revenue: refOf(id, rev.get(end)),
-        netIncome: refOf(id, ni.get(end)),
-        operatingCashFlow: refOf(id, cfo.get(end)),
-        capex: refOf(id, capex.get(end)),
-        equity: refOf(id, eq.get(end)),
-      },
-    };
-  });
-}
-
-/** The fiscal-year end before `end` among stored equity values (balance sheets can be dated a few days apart). */
-function priorEquity(cik: string, end: string): FactRow | undefined {
-  return getDb()
-    .prepare(
-      "SELECT concept, period_end, period_start, value, tag, accn, form, filed FROM facts WHERE cik = ? AND origin = 'companyfacts' AND concept = 'equity' AND period_end < ? ORDER BY period_end DESC LIMIT 1",
-    )
-    .get(padCik(cik), end) as FactRow | undefined;
+  return rowsFromFacts(padCik(cik), storedFacts(cik));
 }
 
 export function computeMetrics(cik: string, rows: AnnualRow[]): MetricView[] {
   const cur = rows[0];
   if (!cur) return [];
-  const prevEq = priorEquity(cik, cur.end);
-  return buildMetrics(rows, prevEq && { value: prevEq.value, end: prevEq.period_end, ref: refOf(cik, prevEq) });
+  return buildMetrics(rows, priorEquityFromFacts(padCik(cik), storedFacts(cik), cur.end));
 }
 
 export { factorScores, riskFlags };

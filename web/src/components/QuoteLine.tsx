@@ -1,4 +1,5 @@
 import type { MarketStatus, QuoteView } from '@ust/shared';
+import { DEMO } from '../demo/mode';
 import { formatEt, formatPrice } from '../format';
 import { ChangeValue } from './ChangeValue';
 import { FreshnessBadge } from './FreshnessBadge';
@@ -15,6 +16,7 @@ interface Props {
  */
 export function QuoteLine({ quote, market, size = 'md' }: Props) {
   if (quote.price == null || !quote.asOf) {
+    if (DEMO) return <span className="muted">{quote.lastError}</span>;
     return <span className="muted">No price stored yet{quote.lastError ? ` (last attempt failed: ${quote.lastError})` : ''}</span>;
   }
   return (

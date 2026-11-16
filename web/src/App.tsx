@@ -4,6 +4,7 @@ import { useApi } from './api/useApi';
 import { AuthProvider, useAuth, useOptionalAuth } from './auth/AuthContext';
 import { FreshnessBadge } from './components/FreshnessBadge';
 import { LoadingSkeleton } from './components/states/States';
+import { DemoBanner } from './demo/DemoBanner';
 import { DEMO } from './demo/mode';
 import { Gallery } from './gallery/Gallery';
 import { AppShell, NAV, type ScreenId } from './layout/AppShell';
@@ -83,11 +84,7 @@ function Terminal({ email }: { email: string }) {
         account={DEMO ? undefined : { email, onLogout }}
         showComponents={import.meta.env.DEV}
       >
-        {DEMO && (
-          <div className="notice demo-banner" role="note">
-            <strong>Demo.</strong> Every price and financial figure here is sample data, not real market data. Login, live prices, SEC filings and AI reviews are turned off. Your watchlist is kept in this browser only.
-          </div>
-        )}
+        {DEMO && <DemoBanner />}
         {route.screen === 'home' && <HomeScreen />}
         {route.screen === 'research' && <ResearchScreen ticker={route.param} />}
         {route.screen === 'screener' && <ScreenerScreen />}

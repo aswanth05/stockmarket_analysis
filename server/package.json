@@ -7,7 +7,8 @@
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
-    "update:sp500": "tsx scripts/update-sp500.ts"
+    "update:sp500": "tsx scripts/update-sp500.ts",
+    "demo:snapshot": "tsx scripts/build-demo-snapshot.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
