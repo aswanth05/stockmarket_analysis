@@ -107,3 +107,19 @@ Step numbers refer to [PROJECT_STEPS.md](PROJECT_STEPS.md). Build order follows 
 - `SEC_EDGAR_USER_AGENT` in `server/.env` must be filled in by you (a privacy safeguard stopped me writing your email there).
 - Part E design approval was skipped; colors and layout are still provisional.
 - Trademark check for "TradeVision" (step 26) not done; the app uses the name "US Stock Terminal".
+
+## 2026-11-16: Public demo on GitHub Pages
+
+**What changed**
+- Demo build (`VITE_DEMO=true`): no login, all screens, data answered in the browser from a static snapshot.
+- Snapshot = real SEC EDGAR data for the saved S&P 500 list (annual financials with filing IDs, recent filings, exchanges, calendar-year revenue growth and net margin), built by `server/scripts/build-demo-snapshot.ts` in the Pages workflow, daily and on every push.
+- No prices in the demo: market-data terms do not allow republishing them publicly. Price areas show dashes and say why.
+- Calculation logic moved to `server/src/fundamentals/compute.ts` and `rows.ts` so the server and the demo share it.
+
+**What was tested**
+- 96 tests pass (8 new demo tests). Demo build checked in a browser at 1440 px and 390 px with a one-company layout file; no sideways scrolling on any screen.
+- Deployed: https://aswanth05.github.io/stockmarket_analysis/ loads.
+
+**Open items**
+- Add repository secret `SEC_EDGAR_USER_AGENT` so the snapshot fills with real data; until then the demo's financial areas are empty.
+- The snapshot script has not run against live EDGAR yet; check the first workflow run's log after adding the secret.
