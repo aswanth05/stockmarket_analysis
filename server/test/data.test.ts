@@ -214,3 +214,28 @@ describe('keys stay on the server', () => {
     }
   });
 });
+
+describe('revenue tag choice', () => {
+  it('uses total revenue, not a partial line, when a company reports both (e.g. REITs)', () => {
+    const facts: CompanyFacts = {
+      cik: 1,
+      entityName: 'Example REIT',
+      facts: {
+        'us-gaap': {
+          RevenueFromContractWithCustomerExcludingAssessedTax: {
+            units: { USD: [{ start: '2025-01-01', end: '2025-12-31', val: 50_000_000, accn: 'a', fp: 'FY', form: '10-K', filed: '2026-02-20' }] },
+          },
+          Revenues: {
+            units: { USD: [{ start: '2025-01-01', end: '2025-12-31', val: 1_500_000_000, accn: 'a', fp: 'FY', form: '10-K', filed: '2026-02-20' }] },
+          },
+          NetIncomeLoss: {
+            units: { USD: [{ start: '2025-01-01', end: '2025-12-31', val: 300_000_000, accn: 'a', fp: 'FY', form: '10-K', filed: '2026-02-20' }] },
+          },
+        },
+      },
+    };
+    const rev = extractAnnual(facts).find((f) => f.concept === 'revenue')!;
+    expect(rev.value).toBe(1_500_000_000);
+    expect(rev.tag).toBe('Revenues');
+  });
+});

@@ -4,7 +4,7 @@ import { buildMetrics, factorScores, riskFlags } from './compute';
 import { priorEquityFromFacts, rowsFromFacts, type FactRow } from './rows';
 import { getDb, nowIso } from '../db';
 import { companyFacts, filingUrl, frame, padCik, submissions } from '../providers/edgar';
-import { CONCEPT_TAGS, extractAnnual, type Concept } from './extract';
+import { CONCEPT_TAGS, extractAnnual, MAX_WINS, type Concept } from './extract';
 
 const FACTS_TTL_MS = 24 * 3600_000;
 const TRACKED_FORMS = new Set(['10-K', '10-K/A', '10-Q', '10-Q/A', '8-K', '8-K/A', 'DEF 14A', 'S-1', '20-F', '6-K']);
@@ -96,7 +96,9 @@ export async function refreshFrames(now = new Date()) {
         const rows = await frame(tags[rank]!, `CY${year}`);
         for (const row of rows) {
           const cik = padCik(row.cik);
-          if (!best.has(cik)) best.set(cik, { tag: tags[rank]!, rank, row });
+          const have = best.get(cik);
+          // Revenue: the largest tag is the total; other concepts: preferred tag first.
+          if (!have || (MAX_WINS.includes(concept) && row.val > have.row.val)) best.set(cik, { tag: tags[rank]!, rank, row });
         }
       }
       db.exec('BEGIN');

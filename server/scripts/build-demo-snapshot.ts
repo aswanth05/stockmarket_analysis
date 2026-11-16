@@ -33,14 +33,21 @@ const exchanges = new Map((await tickersWithExchange()).map((t) => [t.ticker, t.
 
 /* Calendar-year frames: one request per tag and year gives revenue/net income for every company. */
 const year = new Date().getUTCFullYear() - 1;
-async function bestByCik(tags: readonly string[], period: string) {
+/** One value per company: the preferred tag, or for revenue the largest tag (total, not a partial line). */
+async function bestByCik(tags: readonly string[], period: string, takeMax: boolean) {
   const out = new Map<string, FrameRow>();
-  for (const tag of tags) for (const row of await frame(tag, period)) if (!out.has(padCik(row.cik))) out.set(padCik(row.cik), row);
+  for (const tag of tags) {
+    for (const row of await frame(tag, period)) {
+      const k = padCik(row.cik);
+      const have = out.get(k);
+      if (!have || (takeMax && row.val > have.val)) out.set(k, row);
+    }
+  }
   return out;
 }
-const revNow = await bestByCik(CONCEPT_TAGS.revenue, `CY${year}`);
-const revPrev = await bestByCik(CONCEPT_TAGS.revenue, `CY${year - 1}`);
-const niNow = await bestByCik(CONCEPT_TAGS.netIncome, `CY${year}`);
+const revNow = await bestByCik(CONCEPT_TAGS.revenue, `CY${year}`, true);
+const revPrev = await bestByCik(CONCEPT_TAGS.revenue, `CY${year - 1}`, true);
+const niNow = await bestByCik(CONCEPT_TAGS.netIncome, `CY${year}`, false);
 const period = `CY${year} vs CY${year - 1}`;
 
 const companies: Record<string, unknown> = {};

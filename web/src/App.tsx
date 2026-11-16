@@ -5,6 +5,7 @@ import { AuthProvider, useAuth, useOptionalAuth } from './auth/AuthContext';
 import { FreshnessBadge } from './components/FreshnessBadge';
 import { LoadingSkeleton } from './components/states/States';
 import { DemoBanner } from './demo/DemoBanner';
+import { DemoHome } from './demo/DemoHome';
 import { DEMO } from './demo/mode';
 import { Gallery } from './gallery/Gallery';
 import { AppShell, NAV, type ScreenId } from './layout/AppShell';
@@ -85,7 +86,7 @@ function Terminal({ email }: { email: string }) {
         showComponents={import.meta.env.DEV}
       >
         {DEMO && <DemoBanner />}
-        {route.screen === 'home' && <HomeScreen />}
+        {route.screen === 'home' && (DEMO ? <DemoHome /> : <HomeScreen />)}
         {route.screen === 'research' && <ResearchScreen ticker={route.param} />}
         {route.screen === 'screener' && <ScreenerScreen />}
         {route.screen === 'sectors' && <SectorsScreen />}

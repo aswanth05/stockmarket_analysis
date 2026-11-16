@@ -20,6 +20,8 @@ export const CONCEPT_TAGS = {
 
 export type Concept = keyof typeof CONCEPT_TAGS;
 export const INSTANT_CONCEPTS: Concept[] = ['equity'];
+/** Concepts where the largest value across candidate tags is the right one (totals vs. partial lines). */
+export const MAX_WINS: Concept[] = ['revenue'];
 
 export interface AnnualFact {
   concept: Concept;
@@ -47,7 +49,6 @@ export function extractAnnual(facts: CompanyFacts, years = 6): AnnualFact[] {
   for (const concept of Object.keys(CONCEPT_TAGS) as Concept[]) {
     const instant = INSTANT_CONCEPTS.includes(concept);
     const byEnd = new Map<string, AnnualFact>();
-    // Lower index = preferred tag; only fill an end date from a less-preferred tag if nothing better exists.
     CONCEPT_TAGS[concept].forEach((tag) => {
       const entries: FactEntry[] = gaap[tag]?.units.USD ?? [];
       const candidates = new Map<string, FactEntry>();
@@ -62,7 +63,11 @@ export function extractAnnual(facts: CompanyFacts, years = 6): AnnualFact[] {
         if (!prev || e.filed > prev.filed) candidates.set(e.end, e);
       }
       for (const [end, e] of candidates) {
-        if (byEnd.has(end)) continue;
+        const have = byEnd.get(end);
+        // Revenue: companies often report a partial line (e.g. REITs report non-lease "contract" revenue
+        // beside total "Revenues"). Every candidate is a revenue figure, so the largest is the total.
+        // Other concepts: the first (preferred) tag wins.
+        if (have && !(MAX_WINS.includes(concept) && e.val > have.value)) continue;
         byEnd.set(end, {
           concept,
           periodStart: e.start ?? null,

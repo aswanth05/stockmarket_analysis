@@ -98,3 +98,16 @@ describe('public demo data (real SEC snapshot, no prices)', () => {
     await expect(demoCall('POST', '/watchlist', { ticker: 'ZZZZ' })).rejects.toMatchObject({ status: 404 });
   });
 });
+
+describe('demo Home', () => {
+  it('ranks companies by real SEC growth and margin, with no price fields', async () => {
+    const { demoCall: call } = await import('./demoApi');
+    const h = await call<import('./demoApi').DemoHomeResponse>('GET', '/demo-home');
+    expect(h.status).toBe('ok');
+    expect(h.topGrowth[0]!.ticker).toBe('MSFT');
+    expect(h.topMargin.map((r) => r.ticker)).toEqual(['MSFT', 'XOM']);
+    expect(h.growing).toBe(1);
+    expect(h.shrinking).toBe(1);
+    expect(JSON.stringify(h)).not.toMatch(/"price"/);
+  });
+});

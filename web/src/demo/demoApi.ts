@@ -260,6 +260,69 @@ async function screener(f: ScreenerFilters): Promise<ScreenerResponse> {
   };
 }
 
+export interface DemoRankRow {
+  ticker: string;
+  name: string;
+  sector: string;
+  revenueGrowth: number | null;
+  netMargin: number | null;
+}
+
+export interface DemoHomeResponse {
+  status: Summary['status'];
+  generatedAt: string | null;
+  period: string | null;
+  listSize: number;
+  withAnnual: number;
+  withGrowth: number;
+  medianGrowth: number | null;
+  medianMargin: number | null;
+  growing: number;
+  shrinking: number;
+  topGrowth: DemoRankRow[];
+  topMargin: DemoRankRow[];
+  sectors: { sector: string; count: number; medianGrowth: number | null; medianMargin: number | null }[];
+  watchlist: { count: number; withNewFiling: number };
+  recentFilings: FilingView[];
+}
+
+/** Home for the public demo: built only from the real SEC snapshot (no prices). */
+async function demoHome(): Promise<DemoHomeResponse> {
+  const s = await loadSummary();
+  const rows: DemoRankRow[] = COMPANIES.map((c) => ({
+    ticker: c.ticker,
+    name: c.name,
+    sector: c.sector,
+    revenueGrowth: s.companies?.[c.ticker]?.revenueGrowth ?? null,
+    netMargin: s.companies?.[c.ticker]?.netMargin ?? null,
+  }));
+  const growth = rows.filter((r) => r.revenueGrowth != null);
+  const margin = rows.filter((r) => r.netMargin != null);
+  const groups = new Map<string, DemoRankRow[]>();
+  for (const r of rows) groups.set(r.sector, [...(groups.get(r.sector) ?? []), r]);
+  const filings = await watchlistFilings();
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+  return {
+    status: s.status,
+    generatedAt: s.generatedAt ?? null,
+    period: s.period ?? null,
+    listSize: COMPANIES.length,
+    withAnnual: Object.values(s.companies ?? {}).filter((e) => e.hasAnnual).length,
+    withGrowth: growth.length,
+    medianGrowth: median(growth.map((r) => r.revenueGrowth)),
+    medianMargin: median(margin.map((r) => r.netMargin)),
+    growing: growth.filter((r) => r.revenueGrowth! > 0).length,
+    shrinking: growth.filter((r) => r.revenueGrowth! < 0).length,
+    topGrowth: [...growth].sort((a, b) => b.revenueGrowth! - a.revenueGrowth!).slice(0, 10),
+    topMargin: [...margin].sort((a, b) => b.netMargin! - a.netMargin!).slice(0, 10),
+    sectors: [...groups.entries()]
+      .map(([sector, list]) => ({ sector, count: list.length, medianGrowth: median(list.map((r) => r.revenueGrowth)), medianMargin: median(list.map((r) => r.netMargin)) }))
+      .sort((a, b) => (b.medianGrowth ?? -1) - (a.medianGrowth ?? -1)),
+    watchlist: { count: watchlist.length, withNewFiling: new Set(filings.filter((f) => f.filed >= weekAgo).map((f) => f.ticker)).size },
+    recentFilings: filings.slice(0, 8),
+  };
+}
+
 async function sectors(): Promise<SectorsResponse> {
   const s = await loadSummary();
   const groups = new Map<string, typeof COMPANIES>();
@@ -317,6 +380,7 @@ async function route(method: string, path: string, body: unknown): Promise<unkno
   if (p === '/health') return { status: 'ok', serverTime: new Date().toISOString() };
   if (p === '/market/status') return marketStatus();
   if (p === '/home') return home();
+  if (p === '/demo-home') return demoHome();
   if (p === '/quotes') return { quotes: (q.tickers ?? '').split(',').filter(Boolean).map((t) => noQuote(t.toUpperCase())), market: marketStatus() };
   if (p === '/search') return search(q.q ?? '');
   if (p.startsWith('/research/') && p.endsWith('/ai-review')) throw new DemoError(409, 'AI reviews are off in the public demo. In the private app, Claude writes them from stored evidence within a monthly spending cap.');
