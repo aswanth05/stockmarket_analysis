@@ -47,3 +47,6 @@ export function useAuth() {
   if (!v) throw new Error('useAuth must be used inside AuthProvider');
   return v;
 }
+
+/** Like useAuth, but returns null outside AuthProvider (the demo build). */
+export const useOptionalAuth = () => useContext(Ctx);

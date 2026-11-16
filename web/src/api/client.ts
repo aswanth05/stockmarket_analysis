@@ -1,3 +1,5 @@
+import { DEMO } from '../demo/mode';
+
 /**
  * All browser requests go to our own /api. Provider keys live only on the server.
  * The session is an httpOnly cookie the browser sends automatically; scripts cannot read it.
@@ -17,6 +19,14 @@ export const setUnauthorizedHandler = (fn: () => void) => {
 };
 
 async function call<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  if (DEMO) {
+    const { demoCall } = await import('../demo/demoApi');
+    try {
+      return await demoCall<T>(method, path, body);
+    } catch (e) {
+      throw new ApiError((e as { status?: number }).status ?? 500, e instanceof Error ? e.message : String(e));
+    }
+  }
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {

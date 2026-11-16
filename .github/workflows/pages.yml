@@ -30,7 +30,7 @@ jobs:
       - run: npm run build -w web
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
-          VITE_STATIC_PREVIEW: 'true'
+          VITE_DEMO: 'true'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist

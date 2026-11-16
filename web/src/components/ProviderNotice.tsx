@@ -1,4 +1,5 @@
 import type { ProvidersStatus } from '@ust/shared';
+import { DEMO } from '../demo/mode';
 
 const NEEDS: Record<keyof ProvidersStatus, { what: string; lines: string }> = {
   alpaca: { what: 'Market prices', lines: 'ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY' },
@@ -10,7 +11,8 @@ const NEEDS: Record<keyof ProvidersStatus, { what: string; lines: string }> = {
 /** Explains which data source is missing and exactly what to add to server/.env. Shown instead of guessed values. */
 export function ProviderNotice({ providers, need }: { providers: ProvidersStatus; need: (keyof ProvidersStatus)[] }) {
   const missing = need.filter((k) => !providers[k]);
-  if (!missing.length) return null;
+  // The demo build has no server; its banner already explains that all data is sample.
+  if (DEMO || !missing.length) return null;
   return (
     <div className="notice" role="note">
       <strong>Not connected yet:</strong>{' '}
