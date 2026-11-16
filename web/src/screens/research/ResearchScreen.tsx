@@ -9,6 +9,7 @@ import { SourceChip } from '../../components/SourceChip';
 import { GroupedBars } from '../../components/charts/GroupedBars';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../../components/states/States';
 import { formatDate, formatRatioPct, formatUsdBig, MISSING } from '../../format';
+import { DEMO } from '../../demo/mode';
 import { useMarket } from '../../layout/MarketContext';
 import { DailyChartCard, SwingStats } from './DailyChartCard';
 
@@ -180,7 +181,15 @@ function LongTerm({ data, onReview }: { data: ResearchResponse; onReview: () => 
         <div className="notice" role="note">
           {data.fundamentalsStatus === 'not-configured' && (
             <>
-              <strong>SEC EDGAR is not connected.</strong> Add <code>SEC_EDGAR_USER_AGENT</code> (your name and email) to <code>server/.env</code> and restart the server to load filings.
+              {DEMO ? (
+                <>
+                  <strong>SEC data has not been downloaded for this demo yet.</strong> The site owner adds the <code>SEC_EDGAR_USER_AGENT</code> secret in GitHub and re-runs the deploy.
+                </>
+              ) : (
+                <>
+                  <strong>SEC EDGAR is not connected.</strong> Add <code>SEC_EDGAR_USER_AGENT</code> (your name and email) to <code>server/.env</code> and restart the server to load filings.
+                </>
+              )}
             </>
           )}
           {data.fundamentalsStatus === 'error' && <>Financial data could not be loaded: {data.fundamentalsError}. The page will try again on the next refresh.</>}
